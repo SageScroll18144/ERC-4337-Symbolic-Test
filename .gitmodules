@@ -3,3 +3,6 @@
 	url = https://github.com/foundry-rs/forge-std
 [submodule "lib/forge-std"]
 	branch = master
+[submodule "SymbolicERC4337/lib/erc4337-checker"]
+	path = SymbolicERC4337/lib/erc4337-checker
+	url = https://github.com/quantstamp/erc4337-checker
