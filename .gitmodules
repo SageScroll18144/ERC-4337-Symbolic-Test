@@ -6,3 +6,6 @@
 [submodule "SymbolicERC4337/lib/erc4337-checker"]
 	path = SymbolicERC4337/lib/erc4337-checker
 	url = https://github.com/quantstamp/erc4337-checker
+[submodule "SymbolicERC4337/lib/openzeppelin-contracts"]
+	path = SymbolicERC4337/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
