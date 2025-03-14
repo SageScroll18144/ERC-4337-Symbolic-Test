@@ -45,10 +45,35 @@ contract SymbolicTest is Test {
         (address combinedAggregator, uint48 combinedValidAfter, uint48 combinedValidUntil) = ERC4337Utils.parseValidationData(combinedData);
 
         address expectedAggregator = address(1);
-        uint48 expectedValidAfter = validAfter1 >= validAfter2 ? validAfter1 : validAfter2;
-        uint48 normalizedValidUntil1 = validUntil1 == 0 ? type(uint48).max : validUntil1;
-        uint48 normalizedValidUntil2 = validUntil2 == 0 ? type(uint48).max : validUntil2;
-        uint48 expectedValidUntil = normalizedValidUntil1 <= normalizedValidUntil2 ? normalizedValidUntil1 : normalizedValidUntil2;
+
+        uint48 expectedValidAfter;
+        if (validAfter1 >= validAfter2) {
+            expectedValidAfter = validAfter1;
+        } else {
+            expectedValidAfter = validAfter2;
+        }
+
+        uint48 normalizedValidUntil1;
+        if (validUntil1 == 0) {
+            normalizedValidUntil1 = type(uint48).max;
+        } else {
+            normalizedValidUntil1 = validUntil1;
+        }
+
+        uint48 normalizedValidUntil2;
+        if (validUntil2 == 0) {
+            normalizedValidUntil2 = type(uint48).max;
+        } else {
+            normalizedValidUntil2 = validUntil2;
+        }
+
+        uint48 expectedValidUntil;
+        if (normalizedValidUntil1 <= normalizedValidUntil2) {
+            expectedValidUntil = normalizedValidUntil1;
+        } else {
+            expectedValidUntil = normalizedValidUntil2;
+        }
+
 
         assertEq(combinedAggregator, expectedAggregator, "Erro: Aggregator invalid for differents aggregators");
         assertEq(combinedValidAfter, expectedValidAfter, "Erro: validAfter incorrect combination for different aggregators");
@@ -65,17 +90,46 @@ contract SymbolicTest is Test {
 
         (address combinedAggregator, uint48 combinedValidAfter, uint48 combinedValidUntil) = ERC4337Utils.parseValidationData(combinedData);
 
-        address expectedAggregator = (aggregator == address(0)) ? address(0) : address(1);
-        uint48 expectedValidAfter = validAfter1 >= validAfter2 ? validAfter1 : validAfter2;
-        uint48 normalizedValidUntil1 = validUntil1 == 0 ? type(uint48).max : validUntil1;
-        uint48 normalizedValidUntil2 = validUntil2 == 0 ? type(uint48).max : validUntil2;
-        uint48 expectedValidUntil = normalizedValidUntil1 <= normalizedValidUntil2 ? normalizedValidUntil1 : normalizedValidUntil2;
+        address expectedAggregator;
+        if (aggregator == address(0)) {
+            expectedAggregator = address(0);
+        } else {
+            expectedAggregator = address(1);
+        }
+
+        uint48 expectedValidAfter;
+        if (validAfter1 >= validAfter2) {
+            expectedValidAfter = validAfter1;
+        } else {
+            expectedValidAfter = validAfter2;
+        }
+
+        uint48 normalizedValidUntil1;
+        if (validUntil1 == 0) {
+            normalizedValidUntil1 = type(uint48).max;
+        } else {
+            normalizedValidUntil1 = validUntil1;
+        }
+
+        uint48 normalizedValidUntil2;
+        if (validUntil2 == 0) {
+            normalizedValidUntil2 = type(uint48).max;
+        } else {
+            normalizedValidUntil2 = validUntil2;
+        }
+
+        uint48 expectedValidUntil;
+        if (normalizedValidUntil1 <= normalizedValidUntil2) {
+            expectedValidUntil = normalizedValidUntil1;
+        } else {
+            expectedValidUntil = normalizedValidUntil2;
+        }
 
         assertEq(combinedAggregator, expectedAggregator, "Erro: Aggregator invalid for same aggregator");
         assertEq(combinedValidAfter, expectedValidAfter, "Erro: validAfter incorrect combination for the same aggregator");
         assertEq(combinedValidUntil, expectedValidUntil, "Erro: validUntil incorrect combination for the same aggregator");
     }
 
-
-
+    
 }
+
