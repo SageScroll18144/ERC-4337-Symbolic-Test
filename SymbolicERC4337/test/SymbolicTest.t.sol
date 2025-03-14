@@ -1,98 +1,81 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 import "../lib/forge-std/src/Test.sol";
-import "../lib/erc4337-checker/src/ERC4337Checker.sol";
+import "../lib/openzeppelin-contracts/contracts/account/utils/draft-ERC4337Utils.sol";
 
 contract SymbolicTest is Test {
 
-    ERC4337Checker erc;
+    function testValidatePackedDataWithNonZeroValidUntil() public pure {
+        address expectedAggregator = address(0x123);
+        uint48 expectedValidAfter = 10;
+        uint48 expectedValidUntil = 20;
 
-    function setUp() public {
-        erc = new ERC4337Checker();
-    }
-    
-    function testSymbolicValidation() public {
-        address sender = symbolic("sender");
-        bytes memory data = symbolic("data");
-        
-        bool result = checker.validate(sender, data);
-        assert(result || !result); // Verifica se a função sempre retorna um booleano válido
-    }
-    
-    function testFailInvalidInput() public {
-        address sender = symbolic("sender");
-        bytes memory data = symbolic("data");
-        
-        vm.assume(data.length == 0); // Assume entrada inválida
-        bool result = checker.validate(sender, data);
-        
-        assert(!result); // Espera que falhe para entradas inválidas
+        uint256 packedData = ERC4337Utils.packValidationData(expectedAggregator, expectedValidAfter, expectedValidUntil);
+        (address actualAggregator, uint48 actualValidAfter, uint48 actualValidUntil) = ERC4337Utils.parseValidationData(packedData);
+
+        assertEq(actualAggregator, expectedAggregator, "Erro: Aggregator does not match for validUntil not null");
+        assertEq(actualValidAfter, expectedValidAfter, "Erro: validAfter does not match for validUntil not null");
+        assertEq(actualValidUntil, expectedValidUntil, "Erro: validUntil does not match for validUntil not null");
     }
 
-    function testValidSender() public {
-        address sender = symbolic("validSender");
-        bytes memory data = symbolic("validData");
 
-        vm.assume(sender != address(0)); // Assume que o endereço não é nulo
-        bool result = checker.validate(sender, data);
-        assert(result); // Espera sucesso para um sender válido
+    function testValidatePackedDataWithZeroValidUntil() public pure {
+        address expectedAggregator = address(0x123);
+        uint48 expectedValidAfter = 400;
+        uint48 expectedValidUntil = 0;
+
+        uint256 packedData = ERC4337Utils.packValidationData(expectedAggregator, expectedValidAfter, expectedValidUntil);
+        (address actualAggregator, uint48 actualValidAfter, uint48 actualValidUntil) = ERC4337Utils.parseValidationData(packedData);
+
+        assertEq(actualAggregator, expectedAggregator, "Erro: Aggregator does not match for validUntil eq. zero");
+        assertEq(actualValidAfter, expectedValidAfter, "Erro: validAfter does not match for validUntil eq. zero");
+        assertEq(actualValidUntil, type(uint48).max, "Erro: validUntil does not match for validUntil eq. zero");
     }
 
-    function testInvalidSender() public {
-        address sender = address(0);
-        bytes memory data = symbolic("data");
+    function testValidateCombinationWithDifferentAggregators(address aggregator1, address aggregator2, uint48 validAfter1, uint48 validUntil1, uint48 validAfter2, uint48 validUntil2) public pure {
+        if (validUntil1 != 0) vm.assume(validAfter1 <= validUntil1);
+        if (validUntil2 != 0) vm.assume(validAfter2 <= validUntil2);
+        vm.assume(aggregator1 != aggregator2);
 
-        bool result = checker.validate(sender, data);
-        assert(!result); // Espera falha para sender inválido
+        uint256 packedData1 = ERC4337Utils.packValidationData(aggregator1, validAfter1, validUntil1);
+        uint256 packedData2 = ERC4337Utils.packValidationData(aggregator2, validAfter2, validUntil2);
+        uint256 combinedData = ERC4337Utils.combineValidationData(packedData1, packedData2);
+
+        (address combinedAggregator, uint48 combinedValidAfter, uint48 combinedValidUntil) = ERC4337Utils.parseValidationData(combinedData);
+
+        address expectedAggregator = address(1);
+        uint48 expectedValidAfter = validAfter1 >= validAfter2 ? validAfter1 : validAfter2;
+        uint48 normalizedValidUntil1 = validUntil1 == 0 ? type(uint48).max : validUntil1;
+        uint48 normalizedValidUntil2 = validUntil2 == 0 ? type(uint48).max : validUntil2;
+        uint48 expectedValidUntil = normalizedValidUntil1 <= normalizedValidUntil2 ? normalizedValidUntil1 : normalizedValidUntil2;
+
+        assertEq(combinedAggregator, expectedAggregator, "Erro: Aggregator invalid for differents aggregators");
+        assertEq(combinedValidAfter, expectedValidAfter, "Erro: validAfter incorrect combination for different aggregators");
+        assertEq(combinedValidUntil, expectedValidUntil, "Erro: validUntil incorrect combination for different aggregators");
     }
 
-    function testEdgeCaseLargeInput() public {
-        address sender = symbolic("sender");
-        bytes memory data = new bytes(1024); // Tamanho grande de entrada
-        
-        bool result = checker.validate(sender, data);
-        assert(result || !result); // Apenas verifica a estabilidade da execução
+    function testValidateCombinationWithSameAggregator(address aggregator, uint48 validAfter1, uint48 validUntil1, uint48 validAfter2, uint48 validUntil2) public pure {
+        if (validUntil1 != 0) vm.assume(validAfter1 <= validUntil1);
+        if (validUntil2 != 0) vm.assume(validAfter2 <= validUntil2);
+
+        uint256 packedData1 = ERC4337Utils.packValidationData(aggregator, validAfter1, validUntil1);
+        uint256 packedData2 = ERC4337Utils.packValidationData(aggregator, validAfter2, validUntil2);
+        uint256 combinedData = ERC4337Utils.combineValidationData(packedData1, packedData2);
+
+        (address combinedAggregator, uint48 combinedValidAfter, uint48 combinedValidUntil) = ERC4337Utils.parseValidationData(combinedData);
+
+        address expectedAggregator = (aggregator == address(0)) ? address(0) : address(1);
+        uint48 expectedValidAfter = validAfter1 >= validAfter2 ? validAfter1 : validAfter2;
+        uint48 normalizedValidUntil1 = validUntil1 == 0 ? type(uint48).max : validUntil1;
+        uint48 normalizedValidUntil2 = validUntil2 == 0 ? type(uint48).max : validUntil2;
+        uint48 expectedValidUntil = normalizedValidUntil1 <= normalizedValidUntil2 ? normalizedValidUntil1 : normalizedValidUntil2;
+
+        assertEq(combinedAggregator, expectedAggregator, "Erro: Aggregator invalid for same aggregator");
+        assertEq(combinedValidAfter, expectedValidAfter, "Erro: validAfter incorrect combination for the same aggregator");
+        assertEq(combinedValidUntil, expectedValidUntil, "Erro: validUntil incorrect combination for the same aggregator");
     }
 
-    function testRandomBytesInput() public {
-        address sender = symbolic("sender");
-        bytes memory data = symbolic("randomData");
-        
-        bool result = checker.validate(sender, data);
-        assert(result || !result); // Apenas valida a execução sem falhas
-    }
 
-    function testBoundaryCaseEmptySender() public {
-        address sender = address(0);
-        bytes memory data = new bytes(1); // Pequena entrada válida
-        
-        bool result = checker.validate(sender, data);
-        assert(!result); // Espera falha
-    }
-
-    function testBoundaryCaseMaxSender() public {
-        address sender = address(type(uint160).max);
-        bytes memory data = symbolic("maxSenderData");
-        
-        bool result = checker.validate(sender, data);
-        assert(result || !result); // Garante que não falha inesperadamente
-    }
-
-    function testEmptyData() public {
-        address sender = symbolic("sender");
-        bytes memory data = new bytes(0);
-        
-        bool result = checker.validate(sender, data);
-        assert(!result); // Assume que uma entrada vazia não é válida
-    }
-
-    function testMaxDataSize() public {
-        address sender = symbolic("sender");
-        bytes memory data = new bytes(4096); // Entrada muito grande
-        
-        bool result = checker.validate(sender, data);
-        assert(result || !result); // Apenas valida a execução
-    } 
 
 }
